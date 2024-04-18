@@ -1,0 +1,7 @@
+*.o
+
+# make
+/hello
+
+# Nix symlinks
+/result
