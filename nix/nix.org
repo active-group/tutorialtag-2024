@@ -1,0 +1,236 @@
+#+STARTUP: showall
+
+* Nix from Scratch
+
+- Teaser für Nix
+- Paketmanager, Programmiersprache, Betriebssystem
+
+* Ziel
+
+- Nix-Shells (~nix develop~) verstehen und nutzen können
+
+* Beispiel
+
+(live)
+
+* Nix-Shells
+
+- +Reproduktive+ Reproduzierbare, projekt-lokale Entwicklungsumgebungen
+- Auch bei CI nützlich
+- Deklarativ: was brauche ich, um in diesem Projekt zu entwickeln?
+- Brauchen: "was" --> Pakete!
+
+* Nix, der Paketmanager
+
+- Über 80.000 Community-gepflegte Pakete: https://github.com/NixOS/nixpkgs/
+- Nix' Idee: jedes Paket ist Funktion seiner Abhängigkeiten
+  ([[https://edolstra.github.io/pubs/phd-thesis.pdf][The Purely Functional Software Deployment Model]] - Thesis von Eelco Dolstra)
+- Beschreibung der Pakete mit "Nix"
+
+* Nix, die Programmiersprache
+
+- Dynamisch getypt
+- Pur funktional
+- Lazy!
+
+Siehe [[https://nixos.org/manual/nix/stable/language/]]
+
+* Nix - Erkunden mit der REPL
+
+~nix repl~
+
+* Nix - Primitive Sprachkonstrukte
+
+~null~, Strings, Zahlen, Booleans, Pfade
+
+* Nix - Attributsets
+
+- Bestehen aus Key-Value-Paaren
+- ~{ <attribut> = <wert>; }~  <-- Semikolon!
+- Eindeutige Attributnamen
+- Strings als Namen möglich
+
+* Nix - Attributsets
+
+Attributzugriff mit ~.~
+
+#+begin_src nix
+{ foobar = "baz"; }.foobar
+#+end_src
+
+Fehler, falls Attribut nicht existiert --> =or=
+
+* Nix - Attributsets
+
+Funktionale Updates mit ~//~
+
+#+begin_src nix
+{ a = 3; b = 4; } // { c = "hi"; }
+
+{ a = 3; b = 4; } // { a = "hi"; }
+#+end_src
+
+* Nix - Kurzschreibweise für Schachtelung
+
+#+begin_src nix
+{ foo.bar.baz = 17; }
+# {
+#   foo = { ... };  <-- Laziness: unausgewertet
+# }
+#+end_src
+
+* Nix - Lokale Bindungen mit =let=
+
+#+begin_src nix
+let x = 3;         # <-- Semikolon!
+    y = x + 5;     # <-- hier auch
+in { z = x * y; }
+#+end_src
+
+* Nix - Listen
+
+Ohne Trennzeichen zwischen Elementen
+
+#+begin_src nix
+let x = [ 1 2 5 ]; in builtins.length x
+#+end_src
+
+* Nix - Funktionen / Lambdas
+
+- Argument(e) vor ~:~
+- Klammerung der Argumente nicht nötig
+
+#+begin_src nix
+let f = x: 2 * x;
+in f 5
+#+end_src
+
+- Gecurryt
+
+#+begin_src nix
+let f = a: b: 3 + a*b;
+in builtins.map (f 5) [ 2 17 ]
+#+end_src
+
+* Nix - ~inherit~
+
+- "Erbt Dinge in Scope"
+- ~inherit a~ --> =a = a;=
+
+#+begin_src nix
+let a = "foo";
+    b = "bar";
+in { inherit a b; }
+#+end_src
+
+- Aus Sets in Scope ziehen
+
+#+begin_src nix
+let outer = { deeply.nested = "inner"; };
+in { inherit (outer.deeply) nested; }
+#+end_src
+
+* Nix - Mehr (wichtige) Features
+
+- Mehrzeilige Strings
+- String-Interpolation
+- Pfad- und sonstige Operatoren
+
+* Pakete oder Flakes?
+
+- Wie Pakete definiert werden --> später, falls Zeit
+- Pakete benutzen --> Flakes
+- Experimentell
+- Besseres CLI als vorher
+
+* Flake-Referenzen
+
+Häufig:
+
+- GitHub: ~github:nixos/nixpkgs~
+- GitHub mit Ref: ~github:nixos/nixpkgs?ref=master~
+- Lokaler Pfad: ~path:/home/void/dotfiles~
+- Viele mehr --> siehe ~nix flake --help~
+
+* Flake-Referenzen
+
+Wie benutzen?
+
+- CLI: ~nix run github:nixos/nixpkgs#pokemonsay HI THERE~
+- Flake-Registry für kurze Bezeichner: ~nix registry list~
+- REPL: ~:lf github:kenranunderscore/dotfiles~
+- Beispiel: ~outputs.<TAB TAB>~
+
+* Projekte als Flakes
+
+- Flakes beschreiben Mapping: "Inputs" --> "Outputs"
+-> Dependencies + Tools --> Artefakte
+
+- ~nix flake init~
+
+* Flake-Outputs + Befehle
+
+- ~packages~ --> ~nix build~ (~nix run~, ~nix develop~)
+- ~devShells~ --> ~nix develop~
+- ~apps~ --> ~nix run~ (~nix build~)
+- ~nixosConfigurations~ --> ~nixos-rebuild~
+- ~homeConfigurations~ --> ~home-manager~
+- etc.
+
+* Gezielte Output-Auswahl
+
+- ~nix build .#foo~
+- ~nix develop .#integration-tests~
+- ~nix run nixpkgs#some-app~
+
+* Ablauf
+
+~nix <command> .#some-output~:
+
+- Bestimme Art des Ziels (~packages~, ~devShells~ etc.) anhand von ~<command>~
+- Finde Systemarchitektur (~builtins.currentSystem~)
+- Suche nach ~<output-kind>.<system>.some-output~
+
+* "Wo ist der Kram?"
+
+- ~/nix/store~
+- Cache / Memoization
+- ~result~ --> Symlink in den Store
+- Garbage-Collection, wenn sich viel anhäuft
+- GC-Roots
+
+* Direnv
+
+- Praktisch für Integration in IDEs/Editoren
+
+* Pakete
+
+(live)
+
+* Pakete
+
+Wo ist die "Funktion ihrer Abhängigkeiten"?
+
+--> ~callPackage~
+
+* Pakete
+
+- Overriding: Was, wenn wir gegen ~ncurses5~ bauen wollen?
+
+* Nützliche Links
+
+- Moderne Einführung: https://zero-to-nix.com/
+- Sprachunterstützungen in Nix: https://nixos.org/manual/nixpkgs/stable/#chap-language-support
+
+* Ausblicke
+
+- ~nix build~ für eigene Projekte
+- Binary-Cache, Hydra-CI
+- OCI-Images mit Nix bauen
+- Integrationstests mit NixOS-Tests: QEMU-Orchestrierung
+- NixOS
+- ...
+
+* Tutorialtag-Links und -Repos
+
+https://github.com/active-group/tutorialtag-2024
